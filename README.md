@@ -7,17 +7,17 @@ Zeta*-SIPP is a time-optimal any-angle path-planning algorithm designed to ident
 
 Further details are available in the IJCAI-24 paper titled "Zeta*-SIPP: Improved Time-Optimal Any-Angle Safe-Interval Path Planning".
 
-The demo is available at http://dronectr.tudelft.nl/, using the ID: Zeta*.
+The Zeta*-SIPP demo is available at http://dronectr.tudelft.nl/, using the ID: Zeta*. This project is a side product of our research on Unmanned Air Traffic Management (UTM). If you are interested, feel free to visit our UTM simulator, DroneCTR, with the ID: demo.
 
 ## Code Structure
 
-| Name              | Description                                                                 |
-| ----------------- | --------------------------------------------------------------------------- |
-| algorithm         | Pathfinding and relevant functions.                                         |
-| dataset           | Pathfinding benchmarks.                                                     |
-| scenario          | Dynamic scenario generation for pathfinding.                                |
-| benchmark         | The main file for benchmark testing.                                        |
-| output            | Generated only when executing "benchmark.js"                                |
+| Name      | Description                                  |
+| --------- | -------------------------------------------- |
+| algorithm | Pathfinding and relevant functions.          |
+| dataset   | Pathfinding benchmarks.                      |
+| scenario  | Dynamic scenario generation for pathfinding. |
+| benchmark | The main file for benchmark testing.         |
+| output    | Generated only when executing "benchmark.js" |
 
 For benchmark testing, you can directly run the code of "benchmark.js". For example, 
 
