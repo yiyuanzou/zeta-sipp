@@ -113,7 +113,7 @@ class TOAASIPP {
         currentNode.f = currentNode.gLow + currentNode.h;
 
         // Make sure the current parent is the best of the "current" potential parents.
-        if (this.newBestPotentialParentExists(currentNode)) {
+        if (this.newBestPotentialParentExists(currentNode) || currentNode.g === Infinity) {
             this.openHeap.push(currentNode);
             return;
         }
