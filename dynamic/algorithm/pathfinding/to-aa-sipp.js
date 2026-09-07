@@ -105,7 +105,6 @@ class TOAASIPP {
         if (gNew < currentNode.g) {
             currentNode.g = gNew;
             currentNode.parent = currentNode.bestPotentialParent;
-            currentNode.waitTime = gNew - currentNode.gLow;
         }
 
         // Best potential parent := True parent
@@ -124,6 +123,9 @@ class TOAASIPP {
 
             // When this node is closed, the optimal path from the start node to this node is known.
             currentNode.closed = true;
+            currentNode.waitTime = currentNode.g - currentNode.parent.g -
+                this.euclidean(currentNode.parent, currentNode) / this.speed;
+
             currentNode.potentialParents.length = 0;
             currentNode.gLowArray.length = 0;
             return currentNode;
