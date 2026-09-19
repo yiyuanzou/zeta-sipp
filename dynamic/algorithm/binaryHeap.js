@@ -32,19 +32,6 @@ class BinaryHeap {
         return result;
     }
 
-    remove(node) {
-        const i = this.content.indexOf(node);
-
-        // When it is found, the process seen in 'pop' is repeated
-        // to fill up the hole.
-        const end = this.content.pop();
-
-        if (i !== this.content.length - 1) {
-            this.content[i] = end;
-            this.scoreFunction(end) < this.scoreFunction(node) ? this.bubbleUp(i) : this.sinkDown(i);
-        }
-    }
-
     size() {
         return this.content.length;
     }

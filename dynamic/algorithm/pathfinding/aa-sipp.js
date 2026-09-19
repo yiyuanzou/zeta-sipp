@@ -121,7 +121,7 @@ class AASIPP extends SIPP {
 
         if (waitTime > waitTimeOld) {
             // Update the waiting time recursively.
-            for (let i = 0; i < index; i++) {
+            for (let i = 0; i <= index; i++) {
                 waitTime = this.updateWaitTime(traceGrids, intervals, i, waitTime, maxWaitTime);
                 if (waitTime === Infinity) return Infinity;
             }

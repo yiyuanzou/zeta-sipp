@@ -13,6 +13,7 @@ class TOAAFoVSIPP extends TOAASIPP {
         const endCell = this.graph.cells[Math.floor(end[0])][Math.floor(end[1])];
         const startNode = startCell.nodes[0];
         startNode.g = 0;
+        startNode.closed = true;
 
         const visibleCells = this.shadowcast.scan(startCell);
         for (const cell of visibleCells) {

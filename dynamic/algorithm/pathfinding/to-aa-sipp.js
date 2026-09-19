@@ -24,6 +24,7 @@ class TOAASIPP {
         const endCell = this.graph.cells[Math.floor(end[0])][Math.floor(end[1])];
         const startNode = startCell.nodes[0];
         startNode.g = 0;
+        startNode.closed = true;
 
         for (let x = 0; x < this.graph.cells.length; x++) {
             for (let y = 0; y < this.graph.cells[0].length; y++) {
@@ -308,7 +309,7 @@ class TOAASIPP {
 
         if (waitTime > waitTimeOld) {
             // Update the waiting time recursively.
-            for (let i = 0; i < index; i++) {
+            for (let i = 0; i <= index; i++) {
                 waitTime = this.updateWaitTime(traceGrids, intervals, i, waitTime, maxWaitTime);
                 if (waitTime === Infinity) return Infinity;
             }
