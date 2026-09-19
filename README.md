@@ -26,7 +26,7 @@ Since the code is written in JavaScript, you need to install [Node.js](https://n
 
 Two versions of Zeta* and Zeta*-SIPP are provided, distinguished by the suffixes `-i` and `-f`. The `-i` variant uses inverted scanning, while the `-f` variant adopts forward scanning. The `-f` variants (`Zeta*-f` and `Zeta*-SIPP-f`) are recommended, as they are generally faster and more memory-efficient.
 
-Additional algorithms are also implemented in JavaScript for comparison, including A*, A* with 2<sup>k</sup> neighborhoods, Theta*, Anya, SIPP, SIPP with 2<sup>k</sup> neighborhoods, AA-SIPP, TO-AA-SIPP and TO-AA-FoV-SIPP.
+Additional algorithms are also implemented in JavaScript for comparison, including A*, A* with square neighborhoods of radius k, Theta*, Anya, SIPP, SIPP with square neighborhoods of radius k, AA-SIPP, TO-AA-SIPP and TO-AA-FoV-SIPP.
 
 Note that in the `static` folder, search nodes are located at grid corners, whereas in the `dynamic` folder, they are placed at grid centers.
 

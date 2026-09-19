@@ -15,7 +15,7 @@ const { parseScen } = require('./scenario/parseScen');
 const header = ['mapset', 'map', 'scen', 'algorithm', 'refLength', 'pathLength', 'treeNodes', 'searchSteps', 'sortedElements', 'scannedNodes', 'runtime'];
 
 // A list of algorithms to test.
-const algorithms = ['Astar', 'Astar_16', 'Astar_32', 'Thetastar', 'Anya', 'Zetastar_i', 'Zetastar_f'];
+const algorithms = ['Astar', 'Astar_2', 'Astar_3', 'Thetastar', 'Anya', 'Zetastar_i', 'Zetastar_f'];
 
 // A list of mapsets.
 const mapsets = ['city512-exp', 'rand10-exp'];
@@ -94,8 +94,8 @@ function mergecsv(filepaths, outputpath) {
 function initPlanner(graph, algorithm) {
     switch (algorithm) {
         case "Astar": return new Astar(graph);
-        case "Astar_16": return new Astar_k(graph, 4);
-        case "Astar_32": return new Astar_k(graph, 5);
+        case "Astar_2": return new Astar_k(graph, 2);
+        case "Astar_3": return new Astar_k(graph, 3);
         case "Thetastar": return new Thetastar(graph);
         case "Anya": return new Anya(graph);
         case "Zetastar_i": return new Zetastar_i(graph);

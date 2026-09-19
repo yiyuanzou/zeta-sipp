@@ -71,8 +71,8 @@ function updateSafeIntervals(graph, path, speed) {
 function initPlanner(graph, speed, algorithm) {
     switch (algorithm) {
         case "SIPP": return new SIPP(graph, speed);
-        case "SIPP_16": return new SIPP_k(graph, speed, 4);
-        case "SIPP_32": return new SIPP_k(graph, speed, 5);
+        case "SIPP_2": return new SIPP_k(graph, speed, 2);
+        case "SIPP_3": return new SIPP_k(graph, speed, 3);
         case "AASIPP": return new AASIPP(graph, speed);
         case "TOAASIPP": return new TOAASIPP(graph, speed);
         case "TOAAFoVSIPP": return new TOAAFoVSIPP(graph, speed);

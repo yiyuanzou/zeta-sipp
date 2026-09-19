@@ -1,12 +1,12 @@
 const { Astar } = require("./astar");
 const { Shadowcast } = require("../shadowcasting");
 
-// 2^k-neighborhoods A*
+// A* with square neighborhoods of radius k
 class Astar_k extends Astar {
     constructor(graph, k) {
         super(graph);
         this.shadowcast = new Shadowcast(graph);
-        this.shadowcast.depth = k - 2;
+        this.shadowcast.depth = k;
     }
 
     findNeighbors(node) {

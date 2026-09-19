@@ -20,7 +20,7 @@ const speed = 0.1;
 const header = ['map', 'scenSet', 'dynamicObs', 'scenId', 'algorithm', 'refTime', 'pathTime', 'treeNodes', 'searchSteps', 'sortedElements', 'scannedNodes', 'sippGrids', 'runtime'];
 
 // A list of algorithms to test.
-const algorithms = ['SIPP', 'SIPP_16', 'SIPP_32', 'AASIPP', 'TOAASIPP', 'TOAAFoVSIPP', 'ZetastarSIPP_i', 'ZetastarSIPP_f'];
+const algorithms = ['SIPP', 'SIPP_2', 'SIPP_3', 'AASIPP', 'TOAASIPP', 'TOAAFoVSIPP', 'ZetastarSIPP_i', 'ZetastarSIPP_f'];
 
 // A list of maps.
 const maps = ['random-64-64-10.map', 'warehouse-10-20-10-2-2.map', 'Berlin_1_256.map'];
@@ -122,8 +122,8 @@ function mergecsv(filepaths, outputpath) {
 function initPlanner(graph, speed, algorithm) {
     switch (algorithm) {
         case "SIPP": return new SIPP(graph, speed);
-        case "SIPP_16": return new SIPP_k(graph, speed, 4);
-        case "SIPP_32": return new SIPP_k(graph, speed, 5);
+        case "SIPP_2": return new SIPP_k(graph, speed, 2);
+        case "SIPP_3": return new SIPP_k(graph, speed, 3);
         case "AASIPP": return new AASIPP(graph, speed);
         case "TOAASIPP": return new TOAASIPP(graph, speed);
         case "TOAAFoVSIPP": return new TOAAFoVSIPP(graph, speed);

@@ -1,14 +1,14 @@
 const { AASIPP } = require("./aa-sipp");
 const { lineOfSightSegOnGrid } = require("../line-of-sight");
 
-// Safe-Interval Path Planning with 2^k-neighborhoods
+// Safe-Interval Path Planning with square neighborhoods of radius k
 class SIPP_k extends AASIPP {
     constructor(graph, speed, k) {
         super(graph, speed);
-        this.k = k - 2;
+        this.k = k;
     }
 
-    // 2^k-neighborhoods forward expansion.
+    // Square neighborhoods forward expansion.
     forwardExpansion(currentNode, currentCell, endCell) {
 
         // Find all neighbor cells for the current cell.
@@ -34,7 +34,7 @@ class SIPP_k extends AASIPP {
         }
     }
 
-    // 2^k-neighborhoods
+    // Square neighborhoods
     findNeighborCells(cx, cy, k) {
         const width = this.graph.cells.length;
         const height = this.graph.cells[0].length;
