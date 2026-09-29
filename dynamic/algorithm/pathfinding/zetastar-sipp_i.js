@@ -1,11 +1,11 @@
 const { TOAASIPP } = require("./to-aa-sipp");
 const { Shadowcast } = require("../shadowcasting");
-const { BinaryHeap } = require("../binaryHeap");
+const { MinHeap } = require("../binaryHeap");
 
 class ZetastarSIPP_i extends TOAASIPP {
     constructor(graph, speed) {
         super(graph, speed);
-        this.boundHeap = new BinaryHeap(node => node.fh);    // Bound heap for bound cells.
+        this.boundHeap = new MinHeap("fh");    // Bound heap for bound cells.
         this.shadowcast = new Shadowcast(this.graph.cells);  // Recursive shadowcasting.
         this.shadowcast.inverted = true;                     // Inverted scanning.
         this.scanBuffer = 1.414214 / this.speed;             // Add buffer due to grid aliasing.
@@ -156,10 +156,20 @@ class ZetastarSIPP_i extends TOAASIPP {
         const [xMinNew, xMaxNew] = xRangeNew;
         const [yMinNew, yMaxNew] = yRangeNew;
 
-        for (let x = xMinNew; x <= xMaxNew; x++)
-            for (let y = yMinNew; y <= yMaxNew; y++)
-                if (x < xMinOld || x > xMaxOld || y < yMinOld || y > yMaxOld)
+        // Preserve the original x-major/y-major insertion order, but skip the
+        // unchanged interior instead of inspecting every cell in the new box.
+        for (let x = xMinNew; x <= xMaxNew; x++) {
+            if (x < xMinOld || x > xMaxOld) {
+                for (let y = yMinNew; y <= yMaxNew; y++)
                     this.initBoundCell(x, y, startCell, endCell);
+            } else {
+                for (let y = yMinNew; y < yMinOld; y++)
+                    this.initBoundCell(x, y, startCell, endCell);
+
+                for (let y = yMaxOld + 1; y <= yMaxNew; y++)
+                    this.initBoundCell(x, y, startCell, endCell);
+            }
+        }
     }
 
     // Elliptical forward expansion + inverted expansion.
@@ -172,11 +182,12 @@ class ZetastarSIPP_i extends TOAASIPP {
 
             // The current node serves as a potential parent.
             for (const cell of currentCell.visibleCells) {
-                cell.nodes.forEach(node => {
-                    if (node.closed) return;
+                for (const node of cell.nodes) {
+                    if (node.closed) continue;
                     this.addPotentialParent(currentNode, node);
-                });
+                }
             }
+
             // No need to keep visibleCells
             if (currentCell.nodes.every(node => node.closed)) {
                 currentCell.visibleCells = [];
@@ -229,11 +240,10 @@ class ZetastarSIPP_i extends TOAASIPP {
             }
             if (!cell.partClosed) continue;
 
-            cell.nodes.forEach(parent => {
-                if (!parent.closed) return;
-                scanCell.nodes.forEach(node =>
-                    this.addPotentialParent(parent, node));
-            });
+            for (const parent of cell.nodes) {
+                if (!parent.closed) continue;
+                for (const node of scanCell.nodes) this.addPotentialParent(parent, node);
+            }
         }
     }
 }

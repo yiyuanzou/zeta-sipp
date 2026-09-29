@@ -1,4 +1,4 @@
-const { intersectSets } = require("../function");
+const { calWaitTime, updateWaitTime } = require("../waiting-time");
 const { lineOfSightSegOnGrid } = require("../line-of-sight");
 const { SIPP } = require("./sipp");
 
@@ -53,80 +53,13 @@ class AASIPP extends SIPP {
         }
     }
 
-    // Calculate the waiting time required for a collision-free transition from node1 to node2.
+    // Share transition timing without coupling the two search algorithms.
     calWaitTime(node1, node2, pathTime, traceGrids) {
-        let timeInFirstGrid, timeInFinalGird;
-        if (traceGrids.length) {
-            timeInFirstGrid = traceGrids[0].time[1];
-            timeInFinalGird = traceGrids[traceGrids.length - 1].time[1] - traceGrids[traceGrids.length - 1].time[0];
-        }
-        else {
-            const pathTimeHalf = pathTime / 2;
-            timeInFirstGrid = pathTimeHalf;
-            timeInFinalGird = pathTimeHalf;
-        }
-        const minTimeIn = node1.g + pathTime - timeInFinalGird;
-
-        const maxWaitTime1 = node1.safeInterval[1] - node1.g - timeInFirstGrid;
-        const maxWaitTime2 = node2.safeInterval[1] - node1.g - pathTime;
-        const maxWaitTime = Math.min(maxWaitTime1, maxWaitTime2);
-        let waitTime = 0;
-
-        // Check if node2 is reachable.
-        if (maxWaitTime <= 0) return Infinity;
-
-        if (minTimeIn <= node2.safeInterval[0])
-            waitTime = node2.safeInterval[0] - minTimeIn + this.timebuffer;
-        if (waitTime >= maxWaitTime) return Infinity;
-
-        // No need to check the safe intervals of node1 and node2 again.
-        const middleGrids = traceGrids.slice(1, -1);
-        this.sippGrids += middleGrids.length + 2;
-
-        // No grid cell between node1 and node2.
-        if (!middleGrids.length) return waitTime;
-
-        // Compute the intervals occupied by this line segment.
-        const intervals = middleGrids.map(grid => [grid.time[0] + node1.g + waitTime, grid.time[1] + node1.g + waitTime]);
-
-        // Safe interval-based conflict detection and resolution.
-        for (let i = 0; i < middleGrids.length; i++) {
-            waitTime = this.updateWaitTime(middleGrids, intervals, i, waitTime, maxWaitTime);
-            if (waitTime === Infinity) return Infinity;
-        }
-        return waitTime;
+        return calWaitTime(this, node1, node2, pathTime, traceGrids);
     }
 
-    // Compute the waiting time for conflict resolution.
-    // Also, update the intervals occupied by the line segment.
-    updateWaitTime(traceGrids, intervals, index, waitTime, maxWaitTime) {
-        const waitTimeOld = waitTime;
-        const grid = traceGrids[index];
-        const cell = this.graph.cells[grid.x][grid.y];
-
-        // Risk intervals should be ordered.
-        for (let k = 0; k < cell.riskInterval.length; k += 2) {
-
-            // Check if there is any conflict.
-            const cellRiskInterval = [cell.riskInterval[k], cell.riskInterval[k + 1]];
-            const conflictInterval = intersectSets(cellRiskInterval, intervals[index]);
-            if (!conflictInterval.length) continue;
-
-            // Compute the delta of waiting time.
-            const delta = cellRiskInterval[1] - intervals[index][0] + this.timebuffer;
-            waitTime += delta;
-            if (waitTime >= maxWaitTime) return Infinity;
-            intervals.forEach(intv => { intv[0] += delta; intv[1] += delta; });
-        }
-
-        if (waitTime > waitTimeOld) {
-            // Update the waiting time recursively.
-            for (let i = 0; i <= index; i++) {
-                waitTime = this.updateWaitTime(traceGrids, intervals, i, waitTime, maxWaitTime);
-                if (waitTime === Infinity) return Infinity;
-            }
-        }
-        return waitTime;
+    updateWaitTime(traceGrids, departure, index, waitTime, maxWaitTime) {
+        return updateWaitTime(this, traceGrids, departure, index, waitTime, maxWaitTime);
     }
 }
 

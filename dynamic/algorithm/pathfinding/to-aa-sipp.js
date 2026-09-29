@@ -1,5 +1,6 @@
-const { BinaryHeap } = require("../binaryHeap");
-const { intersectSets } = require("../function");
+const { calArrivalTimeLowerBound, calWaitTime, updateWaitTime } = require("../waiting-time");
+const { OpenHeap } = require("../binaryHeap");
+const { trivialPath } = require("../function");
 const { lineOfSightGrid, lineSegOnGrid } = require("../line-of-sight");
 
 // Time-Optimal Any-Angle Safe-Interval Path Planning
@@ -7,7 +8,7 @@ class TOAASIPP {
     constructor(graph, speed) {
         this.graph = graph;                                         // 0: obstacle, 1: normal
         this.speed = speed;                                         // Time-optimal
-        this.openHeap = new BinaryHeap(node => node.f);             // Open heap instead of open list.
+        this.openHeap = new OpenHeap();                            // Indexed search heap.
         this.timebuffer = 10e-6;                                    // Add a small buffer for the waiting time
         this.openCells = [];                                        // Record cells containing non-closed nodes
 
@@ -40,25 +41,16 @@ class TOAASIPP {
                 this.openCells.push(cell);
 
                 if (!this.lineOfSight(startCell, cell)) continue;
-                cell.nodes.forEach(node => this.initNodes(node, startNode));
+
+                for (const node of cell.nodes) this.initNodes(node, startNode);
             }
         }
         return [startCell, endCell];
     }
 
-    // TO-AA-SIPP inserts all nodes into the open list during initialization.  
-    // Unlike the version described in the TO-AA-SIPP paper, we only insert nodes that have a finite f-value.
+    // Initial candidates obey the same endpoint constraints as later ones.
     initNodes(node, startNode) {
-        node.visited = true;
-        node.gLow = Math.max(node.safeInterval[0], this.heuristic(startNode, node));
-        node.bestPotentialParent = startNode;
-
-        node.f = node.gLow + node.h;
-        this.openHeap.push(node);
-        this.treeNodes++;
-
-        node.potentialParents.push(startNode);
-        node.gLowArray.push(node.gLow);  // Avoid repeated computation
+        this.addPotentialParent(startNode, node);
     }
 
     // Visit a cell
@@ -70,6 +62,9 @@ class TOAASIPP {
 
     // Search the path
     search(start, end) {
+
+        const terminalPath = trivialPath(this.graph, start, end);
+        if (terminalPath !== null) return terminalPath;
 
         // Initialization
         const [startCell, endCell] = this.init(start, end);
@@ -168,18 +163,18 @@ class TOAASIPP {
 
         for (const cell of this.openCells) {
             if (cell === currentCell || !this.lineOfSight(currentCell, cell)) continue;
-            cell.nodes.forEach(node => {
-                if (node.closed) return;
+
+            for (const node of cell.nodes) {
+                if (node.closed) continue;
                 this.addPotentialParent(currentNode, node);
-            });
+            }
         }
     }
 
     // Add a potential parent and update the best potential parent.
     addPotentialParent(parent, child) {
-        let gLowNew = parent.g + this.heuristic(parent, child);
+        const gLowNew = this.potentialParentLowerBound(parent, child);
         if (gLowNew >= child.safeInterval[1]) return;
-        gLowNew = Math.max(child.safeInterval[0], gLowNew);
 
         // Append first
         child.potentialParents.push(parent);
@@ -203,6 +198,11 @@ class TOAASIPP {
                 [child.gLowArray[0], child.gLowArray[last]] = [child.gLowArray[last], child.gLowArray[0]];
             }
         }
+    }
+
+    // Endpoint occupancy constrains departure before checking intermediate cells.
+    potentialParentLowerBound(parent, child) {
+        return calArrivalTimeLowerBound(this, parent, child);
     }
 
     // Check if new best potential parent exists
@@ -241,80 +241,13 @@ class TOAASIPP {
         return isUnblocked;
     }
 
-    // Calculate the waiting time required for a collision-free transition from node1 to node2.
+    // Share transition timing without coupling the two search algorithms.
     calWaitTime(node1, node2, pathTime, traceGrids) {
-        let timeInFirstGrid, timeInFinalGird;
-        if (traceGrids.length) {
-            timeInFirstGrid = traceGrids[0].time[1];
-            timeInFinalGird = traceGrids[traceGrids.length - 1].time[1] - traceGrids[traceGrids.length - 1].time[0];
-        }
-        else {
-            const pathTimeHalf = pathTime / 2;
-            timeInFirstGrid = pathTimeHalf;
-            timeInFinalGird = pathTimeHalf;
-        }
-        const minTimeIn = node1.g + pathTime - timeInFinalGird;
-
-        const maxWaitTime1 = node1.safeInterval[1] - node1.g - timeInFirstGrid;
-        const maxWaitTime2 = node2.safeInterval[1] - node1.g - pathTime;
-        const maxWaitTime = Math.min(maxWaitTime1, maxWaitTime2);
-        let waitTime = 0;
-
-        // Check if node2 is reachable.
-        if (maxWaitTime <= 0) return Infinity;
-
-        if (minTimeIn <= node2.safeInterval[0])
-            waitTime = node2.safeInterval[0] - minTimeIn + this.timebuffer;
-        if (waitTime >= maxWaitTime) return Infinity;
-
-        // No need to check the safe intervals of node1 and node2 again.
-        const middleGrids = traceGrids.slice(1, -1);
-        this.sippGrids += middleGrids.length + 2;
-
-        // No grid cell between node1 and node2.
-        if (!middleGrids.length) return waitTime;
-
-        // Compute the intervals occupied by this line segment.
-        const intervals = middleGrids.map(grid => [grid.time[0] + node1.g + waitTime, grid.time[1] + node1.g + waitTime]);
-
-        // Safe interval-based conflict detection and resolution.
-        for (let i = 0; i < middleGrids.length; i++) {
-            waitTime = this.updateWaitTime(middleGrids, intervals, i, waitTime, maxWaitTime);
-            if (waitTime === Infinity) return Infinity;
-        }
-        return waitTime;
+        return calWaitTime(this, node1, node2, pathTime, traceGrids);
     }
 
-    // Compute the waiting time for conflict resolution.
-    // Also, update the intervals occupied by the line segment.
-    updateWaitTime(traceGrids, intervals, index, waitTime, maxWaitTime) {
-        const waitTimeOld = waitTime;
-        const grid = traceGrids[index];
-        const cell = this.graph.cells[grid.x][grid.y];
-
-        // Risk intervals should be ordered.
-        for (let k = 0; k < cell.riskInterval.length; k += 2) {
-
-            // Check if there is any conflict.
-            const cellRiskInterval = [cell.riskInterval[k], cell.riskInterval[k + 1]];
-            const conflictInterval = intersectSets(cellRiskInterval, intervals[index]);
-            if (!conflictInterval.length) continue;
-
-            // Compute the delta of waiting time.
-            const delta = cellRiskInterval[1] - intervals[index][0] + this.timebuffer;
-            waitTime += delta;
-            if (waitTime >= maxWaitTime) return Infinity;
-            intervals.forEach(intv => { intv[0] += delta; intv[1] += delta; });
-        }
-
-        if (waitTime > waitTimeOld) {
-            // Update the waiting time recursively.
-            for (let i = 0; i <= index; i++) {
-                waitTime = this.updateWaitTime(traceGrids, intervals, i, waitTime, maxWaitTime);
-                if (waitTime === Infinity) return Infinity;
-            }
-        }
-        return waitTime;
+    updateWaitTime(traceGrids, departure, index, waitTime, maxWaitTime) {
+        return updateWaitTime(this, traceGrids, departure, index, waitTime, maxWaitTime);
     }
 
     // Traced path

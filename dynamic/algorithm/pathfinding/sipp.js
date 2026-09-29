@@ -1,11 +1,12 @@
-const { BinaryHeap } = require("../binaryHeap");
+const { OpenHeap } = require("../binaryHeap");
+const { trivialPath } = require("../function");
 
 // Safe-Interval Path Planning
 class SIPP {
     constructor(graph, speed) {
         this.graph = graph;                                         // 0: obstacle, 1: normal
         this.speed = speed;                                         // Time-optimal
-        this.openHeap = new BinaryHeap(node => node.f);             // Open heap instead of open list.
+        this.openHeap = new OpenHeap();                            // Indexed decrease-key for OPEN.
         this.timebuffer = 1e-5;                                     // Add a small buffer for the waiting time
 
         this.treeNodes = 0;                                         // Number of tree nodes
@@ -31,6 +32,9 @@ class SIPP {
 
     // Search the path
     search(start, end) {
+
+        const terminalPath = trivialPath(this.graph, start, end);
+        if (terminalPath !== null) return terminalPath;
 
         // Initialization
         const endCell = this.init(start, end);

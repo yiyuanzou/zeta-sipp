@@ -18,7 +18,8 @@ class TOAAFoVSIPP extends TOAASIPP {
         const visibleCells = this.shadowcast.scan(startCell);
         for (const cell of visibleCells) {
             if (!cell.visited) this.visitCell(cell, endCell);
-            cell.nodes.forEach(node => this.initNodes(node, startNode));
+
+            for (const node of cell.nodes) this.initNodes(node, startNode);
         }
         return [startCell, endCell];
     }
@@ -30,10 +31,11 @@ class TOAAFoVSIPP extends TOAASIPP {
 
         for (const cell of visibleCells) {
             if (!cell.visited) this.visitCell(cell, endCell);
-            cell.nodes.forEach(node => {
-                if (node.closed) return;
+
+            for (const node of cell.nodes) {
+                if (node.closed) continue;
                 this.addPotentialParent(currentNode, node);
-            });
+            }
         }
     }
 }

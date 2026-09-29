@@ -13,16 +13,11 @@ const fs = require('fs');
 // The first N (N = 32, 64, 96, 128) pairs of starts and ends in each scenfile
 // are dynamic obstacles, which builds a dynamic environment for benchmarking.
 // The remaining pairs are the scenarios to be tested. We select the last 200 pairs in each scenfile.
-function createScen(dynamicScen, scenarios, graph, dynamicObs, speed) {
+function createScen(dynamicScen, scenarios, graph, dynamicObs, dynamicObsMax, speed) {
 
-    if (fs.existsSync(dynamicScen)) {
-        const dynamicEnv = require(dynamicScen);
-        for (let i = 0; i < dynamicObs; i++)
-            updateSafeIntervals(graph, dynamicEnv[i].path, dynamicEnv[i].speed);
-    }
-    else {
+    if (!fs.existsSync(dynamicScen)) {
         const dynamicEnv = [];
-        for (let i = 0; i < dynamicObs; i++) {
+        for (let i = 0; i < dynamicObsMax; i++) {
             const scen = scenarios[i];
             graph.reset();
             const planner = initPlanner(graph, speed, "ZetastarSIPP_f");
@@ -34,7 +29,14 @@ function createScen(dynamicScen, scenarios, graph, dynamicObs, speed) {
             updateSafeIntervals(graph, dynamicEnv[i].path, dynamicEnv[i].speed);
         }
         fs.writeFileSync(dynamicScen, JSON.stringify(dynamicEnv));
+        graph.resetIntervals();
     }
+
+    // Load only the requested prefix, including immediately after generation.
+    const dynamicEnv = require(dynamicScen);
+    for (let i = 0; i < dynamicObs; i++)
+        updateSafeIntervals(graph, dynamicEnv[i].path, dynamicEnv[i].speed);
+
     return scenarios.slice(-200);
 }
 

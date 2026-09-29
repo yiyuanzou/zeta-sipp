@@ -44,4 +44,23 @@ function sortedIndex(array, value) {
     return low;
 }
 
-module.exports = { unionAll, getDist, intersectSets };
+// Return a terminal result for invalid endpoints or an already reached goal.
+// A null result means that normal search is required. The graph must be reset
+// before constructing a planner, as for every other search in this module.
+function trivialPath(graph, start, end) {
+    const from = graph.cells[Math.floor(start[0])]?.[Math.floor(start[1])];
+    const to = graph.cells[Math.floor(end[0])]?.[Math.floor(end[1])];
+    if (!from?.weight || !to?.weight) return [];
+
+    // Searches start at t = 0; a later safe interval cannot make that start valid.
+    const node = from.nodes[0];
+    if (!node || node.safeInterval[0] > 0 || node.safeInterval[1] <= 0) return [];
+    if (from !== to) return null;
+
+    node.g = 0;
+    node.f = 0;
+    node.closed = true;
+    return [node];
+}
+
+module.exports = { unionAll, getDist, intersectSets, trivialPath };

@@ -1,227 +1,124 @@
 // Adapted from https://playtechs.blogspot.com/2007/03/raytracing-on-grid.html
-// A grid cell is not counted if the path segment passes only through its corners.
+// All endpoints are cell centers. Cells touched only at a corner are excluded.
+// Crossing-order arithmetic uses exact integers (within Number safe-integer range).
 function lineSegOnGrid(x0, y0, x1, y1, time) {
+    return traceLineOnGrid(x0, y0, x1, y1, time)[1];
+}
 
-    const grids = [];
-    const dx = Math.abs(x1 - x0);
-    const dy = Math.abs(y1 - y0);
-
-    let x = Math.floor(x0);
-    let y = Math.floor(y0);
-
-    const dtdx = 1 / dx;
-    const dtdy = 1 / dy;
-
-    let d0 = 0, d1 = 0;                     // The times from the start to the intersections
-    let n = 1;                              // The number of intersecting grids.
-    let x_inc, y_inc;                       // The increment (direction) of x and y.
-    let t_next_vertical, t_next_horizontal; // Determine horizontal or vertical expansion.
-
-    // If the slope is infinity
-    if (dx === 0) {
-        x_inc = 0;
-        t_next_horizontal = Infinity;
-    }
-    else if (x1 > x0) {
-        x_inc = 1;
-        n += Math.floor(x1) - x;
-        t_next_horizontal = (x + 1 - x0) * dtdx;
-    }
-    else {
-        x_inc = -1;
-        n += x - Math.floor(x1);
-        t_next_horizontal = (x0 - x) * dtdx;
-    }
-
-    if (dy === 0) {
-        y_inc = 0;
-        t_next_vertical = Infinity;
-    }
-    else if (y1 > y0) {
-        y_inc = 1;
-        n += Math.floor(y1) - y;
-        t_next_vertical = (y + 1 - y0) * dtdy;
-    }
-    else {
-        y_inc = -1;
-        n += y - Math.floor(y1);
-        t_next_vertical = (y0 - y) * dtdy;
-    }
-
-    for (; n > 0; n--) {
-
-        d1 = time * Math.min(t_next_horizontal, t_next_vertical, 1);
-        grids.push({ x: x, y: y, time: [d0, d1] });
-        d0 = d1;
-
-        const error = Math.abs(t_next_horizontal - t_next_vertical);
-        if (error < 1e-10) {
-            y += y_inc;
-            t_next_vertical += dtdy;
-            x += x_inc;
-            t_next_horizontal += dtdx;
-            n--;
-        }
-        else if (t_next_horizontal > t_next_vertical) {
-            y += y_inc;
-            t_next_vertical += dtdy;
-        }
-        else if (t_next_horizontal < t_next_vertical) {
-            x += x_inc;
-            t_next_horizontal += dtdx;
-        }
-    }
-
-    return grids;
+function lineOfSightSegOnGrid(x0, y0, x1, y1, time, cells) {
+    return traceLineOnGrid(x0, y0, x1, y1, time, cells);
 }
 
 function lineOfSightGrid(x0, y0, x1, y1, grids) {
 
-    const isBlocked = (x, y) => !grids[x][y].weight;
+    const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+    let x = x0 - 0.5, y = y0 - 0.5;
+    const x_inc = Math.sign(x1 - x0), y_inc = Math.sign(y1 - y0);
+    let n = 1 + dx + dy;
 
-    const dx = Math.abs(x1 - x0);
-    const dy = Math.abs(y1 - y0);
-
-    let x = Math.floor(x0);
-    let y = Math.floor(y0);
-
-    // The start point is blocked
-    if (isBlocked(x, y)) return [false, 0];
-
-    let n = 1;         // The number of intersecting grids.
-    let x_inc, y_inc;  // The increment (direction) of x and y.
-    let error;         // Determine horizontal or vertical expansion.
-
-    // If the slope is infinity
-    if (dx === 0) {
-        x_inc = 0;
-        error = Infinity;
-    }
-    else if (x1 > x0) {
-        x_inc = 1;
-        n += Math.floor(x1) - x;
-        error = (x + 1 - x0) * dy;
-    }
-    else {
-        x_inc = -1;
-        n += x - Math.floor(x1);
-        error = (x0 - x) * dy;
-    }
-
-    if (dy === 0) {
-        y_inc = 0;
-        error = -Infinity;
-    }
-    else if (y1 > y0) {
-        y_inc = 1;
-        n += Math.floor(y1) - y;
-        error -= (y + 1 - y0) * dx;
-    }
-    else {
-        y_inc = -1;
-        n += y - Math.floor(y1);
-        error -= (y0 - y) * dx;
-    }
-
+    if (!grids[x][y].weight) return [false, 0];
     const maxN = n;
+    let error = dy - dx;
+    const stepX = 2 * dy, stepY = 2 * dx;
+
+    // An axial segment never crosses a diagonal corner.
+    if (dx === 0 || dy === 0) {
+        while (--n > 0) {
+            x += x_inc;
+            y += y_inc;
+            if (!grids[x][y].weight) return [false, maxN - n];
+        }
+        return [true, maxN];
+    }
 
     while (--n > 0) {
         if (error > 0) {
             y += y_inc;
-            error -= dx;
+            error -= stepY;
         }
         else if (error < 0) {
             x += x_inc;
-            error += dy;
+            error += stepX;
         }
         else {
-            if (isBlocked(x + x_inc, y) &&
-                isBlocked(x, y + y_inc))
+            // A diagonal is blocked only when both adjacent cells are walls.
+            if (!grids[x + x_inc][y].weight &&
+                !grids[x][y + y_inc].weight)
                 return [false, maxN - n + 1];
             x += x_inc;
-            error += dy;
+            error += stepX;
             y += y_inc;
-            error -= dx;
+            error -= stepY;
             n--;
         }
-        if (isBlocked(x, y)) return [false, maxN - n];
+        if (!grids[x][y].weight) return [false, maxN - n];
     }
     return [true, maxN];
 }
 
-function lineOfSightSegOnGrid(x0, y0, x1, y1, time, cells) {
-
-    const isBlocked = (x, y) => !cells[x][y].weight;
+// Share occupancy times and corner stepping; supplying cells also checks visibility.
+function traceLineOnGrid(x0, y0, x1, y1, time, cells) {
 
     const grids = [];
-    const dx = Math.abs(x1 - x0);
-    const dy = Math.abs(y1 - y0);
+    const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+    let x = x0 - 0.5, y = y0 - 0.5;
+    const x_inc = Math.sign(x1 - x0), y_inc = Math.sign(y1 - y0);
+    let n = 1 + dx + dy;
 
-    let x = Math.floor(x0);
-    let y = Math.floor(y0);
+    let d0 = 0, d1 = 0;
 
-    const dtdx = 1 / dx;
-    const dtdy = 1 / dy;
-
-    let d0 = 0, d1 = 0;                     // The times from the start to the intersections
-    let n = 1;                              // The number of intersecting grids.
-    let x_inc, y_inc;                       // The increment (direction) of x and y.
-    let t_next_vertical, t_next_horizontal; // Determine horizontal or vertical expansion.
-
-    // If the slope is infinity
-    if (dx === 0) {
-        x_inc = 0;
-        t_next_horizontal = Infinity;
-    }
-    else if (x1 > x0) {
-        x_inc = 1;
-        n += Math.floor(x1) - x;
-        t_next_horizontal = (x + 1 - x0) * dtdx;
-    }
-    else {
-        x_inc = -1;
-        n += x - Math.floor(x1);
-        t_next_horizontal = (x0 - x) * dtdx;
+    // Axis-aligned rays need no crossing-order or corner tests. Keep the
+    // original reciprocal additions so dynamic collision times stay bit-identical.
+    if (dx === 0 || dy === 0) {
+        const step = 1 / (dx + dy);
+        let next = 0.5 * step;
+        for (; n > 0; n--) {
+            if (cells && !cells[x][y].weight) return [false, grids];
+            d1 = time * Math.min(next, 1);
+            grids.push({ x, y, time: [d0, d1] });
+            d0 = d1;
+            x += x_inc;
+            y += y_inc;
+            next += step;
+        }
+        return [true, grids];
     }
 
-    if (dy === 0) {
-        y_inc = 0;
-        t_next_vertical = Infinity;
-    }
-    else if (y1 > y0) {
-        y_inc = 1;
-        n += Math.floor(y1) - y;
-        t_next_vertical = (y + 1 - y0) * dtdy;
-    }
-    else {
-        y_inc = -1;
-        n += y - Math.floor(y1);
-        t_next_vertical = (y0 - y) * dtdy;
-    }
+    const dtdx = 1 / dx, dtdy = 1 / dy;
+    let t_next_horizontal = 0.5 * dtdx;
+    let t_next_vertical = 0.5 * dtdy;
+
+    // Integer error is nextX - nextY in the scaled crossing domain.
+    // Zero means an exact corner; no floating-point tolerance is needed.
+    let error = dy - dx;
+    const stepX = 2 * dy, stepY = 2 * dx;
 
     for (; n > 0; n--) {
 
-        if (isBlocked(x, y)) return [false, grids];
+        if (cells && !cells[x][y].weight) return [false, grids];
         d1 = time * Math.min(t_next_horizontal, t_next_vertical, 1);
         grids.push({ x: x, y: y, time: [d0, d1] });
         d0 = d1;
 
-        const error = Math.abs(t_next_horizontal - t_next_vertical);
-        if (error < 1e-10 && n > 1) {
-            if (isBlocked(x + x_inc, y) && isBlocked(x, y + y_inc)) return [false, grids];
+        if (error === 0 && n > 1) {
+            if (cells && !cells[x + x_inc][y].weight && !cells[x][y + y_inc].weight) return [false, grids];
             y += y_inc;
             t_next_vertical += dtdy;
+            error -= stepY;
             x += x_inc;
             t_next_horizontal += dtdx;
+            error += stepX;
             n--;
         }
-        else if (t_next_horizontal > t_next_vertical) {
+        else if (error > 0) {
             y += y_inc;
             t_next_vertical += dtdy;
+            error -= stepY;
         }
-        else if (t_next_horizontal < t_next_vertical) {
+        else if (error < 0) {
             x += x_inc;
             t_next_horizontal += dtdx;
+            error += stepX;
         }
     }
     return [true, grids];

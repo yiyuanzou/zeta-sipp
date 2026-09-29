@@ -16,6 +16,10 @@ const { createScen } = require('./scenario/createScen');
 // Object moving speed (can be set arbitrarily)
 const speed = 0.1;
 
+// All obstacle counts share the trajectories generated for the maximum count.
+const dynamicObsCounts = [32, 64, 96, 128];
+const dynamicObsMax = Math.max(...dynamicObsCounts);
+
 // Record the experiment outputs.
 const header = ['map', 'scenSet', 'dynamicObs', 'scenId', 'algorithm', 'refTime', 'pathTime', 'treeNodes', 'searchSteps', 'sortedElements', 'scannedNodes', 'sippGrids', 'runtime'];
 
@@ -55,12 +59,13 @@ maps.forEach(map => {
         const dynamicScenfolder = filepath.join(scenSet, './dynamicScen');
         if (!fs.existsSync(dynamicScenfolder)) fs.mkdirSync(dynamicScenfolder);
 
-        for (const dynamicObs of [32, 64, 96, 128]) {
+        const dynamicScen = filepath.join(dynamicScenfolder, `${scenfile.slice(0, -5)}_${dynamicObsMax}.json`);
+
+        for (const dynamicObs of dynamicObsCounts) {
 
             // Reset the intervals
             graph.resetIntervals();
-            const dynamicScen = filepath.join(dynamicScenfolder, `${scenfile.slice(0, -5)}_${dynamicObs}.json`);
-            const newScenarios = createScen(dynamicScen, scenarios, graph, dynamicObs, speed);
+            const newScenarios = createScen(dynamicScen, scenarios, graph, dynamicObs, dynamicObsMax, speed);
 
             // Search the paths.
             for (const algorithm of algorithms) {

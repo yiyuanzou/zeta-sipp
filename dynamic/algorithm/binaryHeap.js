@@ -1,97 +1,143 @@
-// More info: https://eloquentjavascript.net/1st_edition/appendix2.html
-
-class BinaryHeap {
-    constructor(scoreFunction) {
+// OPEN nodes have a mutable f key and need direct decrease-key lookup.
+// A node may belong to only one live OpenHeap and may occur there only once.
+class OpenHeap {
+    constructor() {
         this.content = [];
-        this.scoreFunction = scoreFunction;
-    }
-
-    sortElement(node) {
-        this.bubbleUp(this.content.indexOf(node));
-    }
-
-    push(element) {
-        // Add the new element to the end of the array.
-        this.content.push(element);
-
-        // Allow it to bubble up.
-        this.bubbleUp(this.content.length - 1);
-    }
-
-    shift() {
-        // Store the first element so we can return it later.
-        const result = this.content[0];
-        // Get the element at the end of the array.
-        const end = this.content.pop();
-        // If there are any elements left, put the end element at the
-        // start, and let it sink down.
-        if (this.content.length > 0) {
-            this.content[0] = end;
-            this.sinkDown(0);
-        }
-        return result;
     }
 
     size() {
         return this.content.length;
     }
 
-    bubbleUp(n) {
-        // Fetch the element that has to be moved.
-        const element = this.content[n];
-
-        // When at 0, an element can not go up any further.
-        while (n > 0) {
-
-            // Compute the parent element's index, and fetch it.
-            const parentN = ((n + 1) >> 1) - 1;      // (n + 1) >> 1 equals Math.floor((n + 1) / 2)
-            const parent = this.content[parentN];
-
-            // Found a parent that is less, no need to sink any further.
-            if (this.scoreFunction(element) >= this.scoreFunction(parent)) break;
-            // Swap the elements if the parent is greater.
-            this.content[parentN] = element;
-            this.content[n] = parent;
-            // Update 'n' to continue at the new position.
-            n = parentN;
-        }
+    push(node) {
+        this.content.push(node);
+        this.bubbleUp(this.content.length - 1);
     }
-    sinkDown(n) {
-        // Look up the target element and its score.
-        const length = this.content.length;
-        const element = this.content[n];
-        const elemScore = this.scoreFunction(element);
 
-        while (true) {
-            // Compute the indices of the child elements.
-            const child2N = (n + 1) << 1;
-            const child1N = child2N - 1;
-            // This is used to store the new position of the element, if any.
-            let child1Score, child2Score, swap = null;
-            // If the first child exists (is inside the array)...
-            if (child1N < length) {
-                // Look it up and compute its score.
-                let child1 = this.content[child1N];
-                child1Score = this.scoreFunction(child1);
+    sortElement(node) {
+        // Resident keys may only decrease. Revalidation may increase a key
+        // after removal, in which case the node is inserted again with push.
+        const index = node.heapIndex;
+        if (index >= 0 && this.content[index] === node) this.bubbleUp(index);
+    }
 
-                // If the score is less than our element's, we need to swap.
-                if (child1Score < elemScore) swap = child1N;
-            }
+    shift() {
+        const a = this.content, first = a[0];
+        if (first === undefined) return undefined;
 
-            // Do the same checks for the other child.
-            if (child2N < length) {
-                const child2 = this.content[child2N];
-                child2Score = this.scoreFunction(child2);
-                if (child2Score < (swap ? child1Score : elemScore)) swap = child2N;
-            }
-
-            if (!swap) break;
-            // If the element needs to be moved, swap it, and continue.
-            this.content[n] = this.content[swap];
-            this.content[swap] = element;
-            n = swap;
+        const end = a.pop();
+        first.heapIndex = -1;
+        if (a.length) {
+            a[0] = end;
+            this.sinkDown(0);
         }
+        return first;
+    }
+
+    bubbleUp(index) {
+        const a = this.content, node = a[index], score = node.f;
+
+        // Move parents down into the hole, then place the node once.
+        while (index > 0) {
+            const parentIndex = (index - 1) >> 1, parent = a[parentIndex];
+            if (score >= parent.f) break;
+
+            a[index] = parent;
+            parent.heapIndex = index;
+            index = parentIndex;
+        }
+
+        a[index] = node;
+        node.heapIndex = index;
+    }
+
+    sinkDown(index) {
+        const a = this.content, node = a[index], score = node.f, length = a.length;
+
+        while (index * 2 + 1 < length) {
+            let child = index * 2 + 1;
+            let childScore = a[child].f;
+
+            // Strict comparison preserves the original left-first tie order.
+            if (child + 1 < length && a[child + 1].f < childScore) {
+                child++;
+                childScore = a[child].f;
+            }
+            if (childScore >= score) break;
+
+            a[index] = a[child];
+            a[index].heapIndex = index;
+            index = child;
+        }
+
+        a[index] = node;
+        node.heapIndex = index;
     }
 }
 
-module.exports = { BinaryHeap };
+// SCAN and BOUND only insert and remove entries; resident keys stay unchanged.
+// Share their ordering logic without writing an index into every entry.
+class MinHeap {
+    constructor(scoreKey) {
+        this.content = [];
+        this.scoreKey = scoreKey;
+    }
+
+    size() {
+        return this.content.length;
+    }
+
+    push(element) {
+        this.content.push(element);
+        this.bubbleUp(this.content.length - 1);
+    }
+
+    shift() {
+        const a = this.content, first = a[0];
+        if (first === undefined) return undefined;
+
+        const end = a.pop();
+        if (a.length) {
+            a[0] = end;
+            this.sinkDown(0);
+        }
+        return first;
+    }
+
+    bubbleUp(index) {
+        const a = this.content, key = this.scoreKey, element = a[index], score = element[key];
+
+        while (index > 0) {
+            const parentIndex = (index - 1) >> 1, parent = a[parentIndex];
+            if (score >= parent[key]) break;
+
+            a[index] = parent;
+            index = parentIndex;
+        }
+
+        a[index] = element;
+    }
+
+    sinkDown(index) {
+        const a = this.content, key = this.scoreKey, element = a[index];
+        const score = element[key], length = a.length;
+
+        // Move the smaller child into the hole; equal children keep left first.
+        while (index * 2 + 1 < length) {
+            let child = index * 2 + 1;
+            let childScore = a[child][key];
+            if (child + 1 < length && a[child + 1][key] < childScore) {
+                child++;
+                childScore = a[child][key];
+            }
+            if (childScore >= score) break;
+
+            a[index] = a[child];
+            index = child;
+        }
+
+        a[index] = element;
+    }
+}
+
+module.exports = { OpenHeap, MinHeap };

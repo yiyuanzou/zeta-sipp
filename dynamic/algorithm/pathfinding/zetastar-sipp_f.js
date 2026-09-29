@@ -1,10 +1,11 @@
 const { TOAASIPP } = require("./to-aa-sipp");
-const { BinaryHeap } = require("../binaryHeap");
+const { quadrantScan } = require("../shadowcasting");
+const { MinHeap } = require("../binaryHeap");
 
 class ZetastarSIPP_f extends TOAASIPP {
     constructor(graph, speed) {
         super(graph, speed);
-        this.scanHeap = new BinaryHeap(range => range.fLow);                      // Scan heap for storing scan ranges.
+        this.scanHeap = new MinHeap("fLow");                                         // Scan heap for storing scan ranges.
     }
 
     // Initialization
@@ -48,73 +49,9 @@ class ZetastarSIPP_f extends TOAASIPP {
             this.quadrantScan(origin, 0, Infinity, 0, Infinity, 0, i, endCell);
     }
 
-    // Quadrant-based shadowcasting for grid centers.
+    // Use the same geometry as ordinary and inverted shadowcasting.
     quadrantScan(origin, deltaX, ymax, ymin, top, bottom, i, endCell) {
-        const x0 = Math.floor(origin.x);
-        const y0 = Math.floor(origin.y);
-        const scanUp = i === 0 || i === 1;
-
-        const realx = (i === 0 || i === 3) ? x0 + deltaX : x0 - deltaX;
-        const col = this.graph.cells[realx];
-        if (!col) return;
-        const ymaxNext = ymax + top;
-
-        // Special case: the first column
-        // [ymin, ymax] directly represents the scan range.
-        if (deltaX === 0) {
-            for (let y = 1; y < ymax; y++) {
-                const realy = scanUp ? y0 + y : y0 - y;
-                const cell = col[realy];
-
-                if (this.blocked(cell)) {
-                    this.pushScan(origin, 1, y, 0, (y - 0.5) / 0.5, 0, i, endCell);
-                    return;
-                }
-                this.axisRecord(origin, cell, i, endCell);
-            }
-        }
-        // General case
-        else {
-
-            // The y-range for grid centers.
-            const interval = [
-                Math.floor(this.rounded(deltaX * bottom) + 0.9999999999),
-                Math.round(this.rounded(deltaX * top) + 0.5) - 1
-            ];
-
-            let wasBlocked = false;
-            for (let y = Math.floor(ymin); y <= Math.ceil(ymaxNext) - 1; y++) {
-                const realy = scanUp ? y0 + y : y0 - y;
-                const cell = col[realy];
-
-                if (this.blocked(cell)) {
-                    if (!wasBlocked) {
-                        const newTop = (y - 0.5) / (deltaX + 0.5);
-                        if (newTop > bottom)
-                            this.pushScan(origin, deltaX + 1, y, ymin + bottom, newTop, bottom, i, endCell);
-                    }
-                    ymin = y + 1;
-                    wasBlocked = true;
-                    if (ymin >= ymax) return;
-                }
-                else {
-                    if (wasBlocked) {
-                        bottom = (ymin - 0.5) / (deltaX - 0.5);
-                        if (interval[1] >= interval[0])
-                            interval[0] = Math.floor(this.rounded(deltaX * bottom) + 0.9999999999);
-                    }
-                    if (interval[0] <= y && y <= interval[1]) {
-                        if (y === 0) this.axisRecord(origin, cell, i, endCell);
-                        else this.record(origin, cell, endCell);
-                    }
-                    wasBlocked = false;
-                }
-            }
-            if (wasBlocked) bottom = (ymin - 0.5) / (deltaX - 0.5);
-        }
-        // Push to the next column.
-        if (top > bottom)
-            this.pushScan(origin, deltaX + 1, ymaxNext, ymin + bottom, top, bottom, i, endCell);
+        quadrantScan(this, this.graph.cells, origin, deltaX, ymax, ymin, top, bottom, i, endCell);
     }
 
     // Add the scan range to the scan heap.
@@ -131,21 +68,16 @@ class ZetastarSIPP_f extends TOAASIPP {
     // Inverted expansion.
     record(origin, cell, endCell) {
         if (!cell.visited) this.visitCell(cell, endCell);
-        cell.nodes.forEach(node => {
-            if (node.closed) return;
+
+        for (const node of cell.nodes) {
+            if (node.closed) continue;
             this.addPotentialParent(origin, node);
-        });
+        }
     }
 
     axisRecord(origin, cell, i, endCell) {
         if (i === 0 || i === 2)
             this.record(origin, cell, endCell);
-    }
-
-    rounded(value) {
-        const rounded = Math.round(value);
-        if (Math.abs(value - rounded) < 1e-10) return rounded;
-        return value;
     }
 
     // Check if the cell is blocked
