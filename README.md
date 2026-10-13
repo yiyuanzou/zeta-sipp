@@ -33,11 +33,9 @@ Note that in the `static` folder, search nodes are located at grid corners, wher
 ## Publications
 Further details are available in:
 
-[1] Zou, Yiyuan, and Clark Borst. "Optimal Any-Angle Path Planning in Static and Dynamic Environments." (Under Review)
+[1] Zou, Yiyuan, and Clark Borst. "[Optimal Any-Angle Path Planning in Static and Dynamic Environments](https://doi.org/10.1016/j.artint.2026.104642)." Artificial Intelligence 361 (2026): 104642.
 
 [2] Zou, Yiyuan, and Clark Borst. "[Zeta*-SIPP: Improved Time-Optimal Any-Angle Safe-Interval Path Planning](https://www.ijcai.org/proceedings/2024/754)." 33rd International Joint Conference on Artificial Intelligence, pp. 6823-6830. 2024.
 
 ## Demo
-A demo is available at http://dronectr.tudelft.nl/, using the ID `zeta-sipp`.
-
-Zeta*-SIPP has been applied in our research on Uncrewed Air Traffic Management (UTM). A demo is available at the same link using the ID `transparency`.
+A demo is available at https://atclab.tudelft.nl/zeta-sipp.
